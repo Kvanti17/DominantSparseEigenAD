@@ -1,5 +1,6 @@
 import torch
 
+
 def Lanczos(A, k, device=torch.device("cpu"), *, sparse=False, dim=None):
     """
         Lanczos iteration algorithm on a real symmetric matrix using Pytorch.
@@ -45,7 +46,7 @@ def Lanczos(A, k, device=torch.device("cpu"), *, sparse=False, dim=None):
     else:
         n = A.shape[0]
         dtype = A.dtype
-        Amap = lambda v: torch.matmul(A, v)
+        def Amap(v): return torch.matmul(A, v)
     Qk = torch.zeros((n, k), dtype=dtype, device=device)
     alphas = torch.zeros(k, dtype=dtype, device=device)
     betas = torch.zeros(k - 1, dtype=dtype, device=device)
@@ -73,11 +74,13 @@ def Lanczos(A, k, device=torch.device("cpu"), *, sparse=False, dim=None):
         alphas[i] = alpha
         betas[i - 1] = beta
         Qk[:, i] = q
-    T = torch.diag(alphas) + torch.diag(betas, diagonal=1) + torch.diag(betas, diagonal=-1)
+    T = torch.diag(alphas) + torch.diag(betas, diagonal=1) + \
+        torch.diag(betas, diagonal=-1)
     return Qk, T
 
-def symeigLanczos(A, k, device=torch.device("cpu"), extreme="both", *, 
-                    sparse=False, dim=None):
+
+def symeigLanczos(A, k, device=torch.device("cpu"), extreme="both", *,
+                  sparse=False, dim=None):
     """
         This function computes the extreme(minimum or maximum, or both) eigenvalues
     and corresponding eigenvectors of a real symmetric matrix A based on Lanczos algorithm.
@@ -95,7 +98,7 @@ def symeigLanczos(A, k, device=torch.device("cpu"), extreme="both", *,
             returned tuples are torch Tensors, including the eigenvalues.
     """
     Qk, T = Lanczos(A, k, device=device, sparse=sparse, dim=dim)
-    eigvalsQ, eigvectorsQ = torch.symeig(T, eigenvectors=True)
+    eigvalsQ, eigvectorsQ = torch.linalg.eigh(T)
     eigvectorsQ = torch.matmul(Qk, eigvectorsQ)
     if extreme == "both":
         return eigvalsQ[0], eigvectorsQ[:, 0], eigvalsQ[-1], eigvectorsQ[:, -1]
@@ -103,3 +106,5 @@ def symeigLanczos(A, k, device=torch.device("cpu"), extreme="both", *,
         return eigvalsQ[0], eigvectorsQ[:, 0]
     elif extreme == "max":
         return eigvalsQ[-1], eigvectorsQ[:, -1]
+    elif extreme == "all":
+        return eigvalsQ, eigvectorsQ
